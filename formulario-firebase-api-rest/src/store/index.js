@@ -17,12 +17,10 @@ export default new Vuex.Store({
   mutations: {
     set(state, payload) {
       state.tareas.push(payload)
-     // console.log(state.tareas)
-     localStorage.setItem('datos', JSON.stringify(state.tareas))
+      // console.log(state.tareas)
     },
     eliminar(state, payload) {
       state.tareas = state.tareas.filter((item) => item.id !== payload) //javascript vainilla -- filter
-      localStorage.setItem('datos', JSON.stringify(state.tareas))
     },
     tarea(state, payload) {
       if (!state.tareas.find((item) => item.id === payload)) {
@@ -36,7 +34,6 @@ export default new Vuex.Store({
       state.tareas = state.tareas.map(
         (item) => (item.id === payload.id ? payload : item),
         router.push('/'),
-        localStorage.setItem('datos', JSON.stringify(state.tareas))
       ) //devuelve el array indicando la condicion que se quiere
     }, //en el payload esta el objeto de tareas que ya esta modificado en el formulario
     //y el payload tienen el ID y cuando lo encuentra se devuelve todo el objeto modificado y en caso de que
@@ -47,26 +44,80 @@ export default new Vuex.Store({
     },
   },
   actions: {
-    setTareas({ commit }, tarea) {
+    //Esperar los datos de la base de datos
+    async cargarLocalStorage({ commit }) {
+      try {
+        const res = await fetch(
+          'https://first-formulario-api-default-rtdb.firebaseio.com/tareas.json',
+        )
+        //solo se captura las tareas
+        const dataDB = await res.json()
+        const arrayTareas = []
+
+        // console.log(dataDB['VHUfBrduP'])
+        for (let id in dataDB) {
+          arrayTareas.push(dataDB[id]) //se empuja una tarea en individual
+        }
+        console.log(arrayTareas)
+        commit('cargar', arrayTareas)
+      } catch (error) {
+        console.log('error en cargarLocalStorage', error)
+      }
+    },
+    //recibimos los datos
+    //guarda info en faribes
+    async setTareas({ commit }, tarea) {
+      try {
+        //para resivir una respuesta se agrega una constate //  const res =
+        const res = await fetch(
+          `https://first-formulario-api-default-rtdb.firebaseio.com/tareas/${tarea.id}.json`,
+          {
+            method: 'PUT', //se agrega un nuevo elemento
+            headers: {
+              //opcional pero si como conoimiento general
+              'Content-Type': 'application/json', //se especifica que los datos que se envian es en JSON
+            },
+            body: JSON.stringify(tarea), //los datos que se transforman a JSON con stringify
+          },
+        )
+        const dataDB = await res.json()
+        console.log(dataDB)
+      } catch (error) {
+        console.log('error en settareas: ', error)
+      }
       commit('set', tarea)
     },
-    eliminarTareas({ commit }, id) {
-      commit('eliminar', id)
+    async eliminarTareas({ commit }, id) {
+      try {
+        await fetch(
+          `https://first-formulario-api-default-rtdb.firebaseio.com/tareas/${id}.json`,
+          {
+            method: 'DELETE',
+          },
+        )
+        commit('eliminar', id)
+      } catch (error) {
+        console.log('error es de eliminarTareas: ', error)
+      }
     },
     setTarea({ commit }, id) {
       commit('tarea', id)
     },
-    updateTarea({ commit }, tarea) {
-      commit('update', tarea)
-    },
-    //se crea una base de datos en el navegator
-    cargarLocalStorage({ commit }) {
-      if (localStorage.getItem('datos')) {
-        const datos = JSON.parse(localStorage.getItem('datos'))
-        commit('cargar', datos)
-        return
+    async updateTarea({ commit }, tarea) {
+      try {
+        const res = await fetch(
+          `https://first-formulario-api-default-rtdb.firebaseio.com/tareas/${tarea.id}.json`,
+          {
+            method: 'PATCH',
+            body: JSON.stringify(tarea), //se manda la tarea modificada
+          },
+        )
+        const dataDB = await res.json()
+        console.log(dataDB)
+        commit('update', dataDB)
+      } catch (error) {
+        console.log('error updateTarea', error)
       }
-      localStorage.setItem('datos', JSON.stringify([]))
     },
   },
 
